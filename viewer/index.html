@@ -1,0 +1,927 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Citation Checker</title>
+<style>
+:root{
+  --bg:#f6f3ee; --panel:#fffdf9; --panel2:#f1ede6; --line:#e2dcd2; --ink:#23201c; --ink2:#5e574d; --ink3:#7d766c;
+  --acc:#2f4a7a; --acc-soft:#e4eaf5;
+  --ok:#2f7d4f; --ok-s:#e2f1e7; --imp:#8a5a00; --imp-s:#fbf0d6; --fix:#b3362c; --fix-s:#f8e1de;
+  --unv:#5a4fa0; --unv-s:#e9e6f6; --pen:#6f695f; --pen-s:#ece8e1;
+  --ins:#d7efdc; --ins-ink:#1d5c33; --del:#f6d9d5; --del-ink:#8f2a22;
+  --serif:"Iowan Old Style","Charter","Palatino Linotype","Book Antiqua",Georgia,serif;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+  --mono:ui-monospace,"SFMono-Regular",Consolas,Menlo,monospace;
+  --r:8px;
+}
+@media (prefers-color-scheme:dark){:root{
+  --bg:#191816; --panel:#211f1c; --panel2:#2a2824; --line:#38352f; --ink:#ece7df; --ink2:#b5ada1; --ink3:#958e83;
+  --acc:#8fb0e8; --acc-soft:#26314a;
+  --ok:#6cc48f; --ok-s:#1e3327; --imp:#e0b050; --imp-s:#3a2f17; --fix:#ef8378; --fix-s:#3d221f;
+  --unv:#ab9ff0; --unv-s:#2c2847; --pen:#a39c91; --pen-s:#2d2b27;
+  --ins:#1f3b29; --ins-ink:#9fe0b4; --del:#43231f; --del-ink:#f3a59c;
+}}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.5 var(--sans);display:flex;flex-direction:column}
+button{font:inherit;color:inherit;cursor:pointer}
+a{color:var(--acc)}
+a.btn{display:inline-block;text-decoration:none;color:var(--ink)}
+a.btn.pri{color:#fff}
+.muted{color:var(--ink3)}
+
+header{display:flex;align-items:center;gap:16px;padding:10px 18px;border-bottom:1px solid var(--line);background:var(--panel);flex-wrap:wrap}
+.brand{font-family:var(--serif);font-size:19px;font-weight:600;letter-spacing:.2px}
+.brand small{display:block;font:12px var(--sans);color:var(--ink3);font-weight:400}
+.chips{display:flex;gap:6px;flex-wrap:wrap;flex:1}
+.chip{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:3px 10px;font-size:12.5px;display:flex;gap:6px;align-items:center}
+.chip b{font-variant-numeric:tabular-nums}
+.chip.on{outline:2px solid var(--acc);outline-offset:-1px}
+.dot{width:8px;height:8px;border-radius:50%;display:inline-block;flex:none}
+.actions{display:flex;gap:6px;align-items:center}
+.btn{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:6px 12px;font-size:13px}
+.btn:hover{background:var(--panel2)}
+.btn.pri{background:var(--acc);border-color:var(--acc);color:#fff}
+.btn.pri:hover{filter:brightness(1.08)}
+@media (prefers-color-scheme:dark){.btn.pri{color:#111}}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.lang{display:flex;border:1px solid var(--line);border-radius:6px;overflow:hidden}
+.lang button{border:0;background:var(--panel);padding:6px 9px;font-size:12px;font-weight:600;color:var(--ink3)}
+.lang button.on{background:var(--acc-soft);color:var(--ink)}
+.menu{position:relative}
+.menu .items{display:none;position:absolute;right:0;top:110%;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.12);min-width:280px;z-index:20;padding:4px}
+.menu.open .items{display:block}
+.items button,.items a{display:block;width:100%;text-align:left;border:0;background:none;padding:8px 10px;border-radius:6px;text-decoration:none;color:var(--ink)}
+.items button:hover,.items a:hover{background:var(--panel2)}
+.items small{display:block;color:var(--ink3)}
+
+main{flex:1;display:grid;grid-template-columns:260px minmax(300px,400px) 1fr;min-height:0}
+aside,.col{min-height:0;overflow:auto}
+aside{border-right:1px solid var(--line);background:var(--panel2);padding:12px}
+.tabs{display:flex;background:var(--panel);border:1px solid var(--line);border-radius:6px;padding:2px;margin-bottom:10px}
+.tabs button{flex:1;border:0;background:none;padding:5px;border-radius:4px;font-size:12.5px;color:var(--ink2)}
+.tabs button.on{background:var(--acc-soft);color:var(--ink);font-weight:600}
+.tree-item{display:block;width:100%;text-align:left;border:0;background:none;padding:7px 8px;border-radius:6px;margin-bottom:2px}
+.tree-item:hover{background:var(--panel)}
+.tree-item.on{background:var(--panel);box-shadow:inset 3px 0 0 var(--acc)}
+.tree-item .name{display:flex;justify-content:space-between;gap:8px;font-size:13px}
+.tree-item .name span:first-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tree-item .sub{font-size:11.5px;color:var(--ink3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar{display:flex;height:4px;border-radius:2px;overflow:hidden;margin-top:5px;background:var(--line)}
+.bar i{display:block;height:100%}
+.label{font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink3);margin:14px 4px 6px}
+
+.col.claims{border-right:1px solid var(--line);padding:12px}
+.search{width:100%;padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font:inherit;margin-bottom:10px}
+.card{display:block;width:100%;text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:10px 12px;margin-bottom:8px;position:relative}
+.card:hover{border-color:var(--ink3)}
+.card.on{border-color:var(--acc);box-shadow:0 0 0 1px var(--acc)}
+.card .top{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--ink3);margin-bottom:4px}
+.card .top .id{font-family:var(--mono);color:var(--ink2)}
+.card .top .badge{white-space:nowrap;flex:none}
+.card .top .pk{min-width:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.card .top .fid{flex:none}
+.card.has-rev .top{padding-right:150px}
+.card .txt{font-family:var(--serif);font-size:14px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.card .rev{position:absolute;right:10px;top:9px;font-size:11px}
+.badge{display:inline-flex;align-items:center;gap:5px;border-radius:4px;padding:1px 7px;font-size:11.5px;font-weight:600}
+.empty{padding:40px 20px;text-align:center;color:var(--ink3)}
+
+.col.detail{padding:22px 28px 60px}
+.det-head{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;color:var(--ink3);font-size:13px}
+.det-head .id{font-family:var(--mono);color:var(--ink);font-size:14px}
+.verdict{display:flex;gap:18px;align-items:center;margin:14px 0 18px;padding:14px 16px;border-radius:var(--r);flex-wrap:wrap}
+.verdict .big{font-size:20px;font-weight:700;font-family:var(--serif)}
+.verdict .q{font-size:13px;opacity:.9}
+.meter{min-width:180px;flex:1;max-width:320px}
+.meter .track{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--fix) 0%,var(--imp) 55%,var(--ok) 85%);position:relative;opacity:.85}
+.meter .mark{position:absolute;top:-4px;width:3px;height:16px;background:var(--ink);border-radius:2px;transform:translateX(-1px)}
+.meter .legend{display:flex;justify-content:space-between;font-size:11px;color:var(--ink3);margin-top:4px}
+.types{display:flex;gap:6px;flex-wrap:wrap;margin:-6px 0 18px}
+.type{border:1px solid var(--line);background:var(--panel);border-radius:999px;padding:2px 10px;font-size:12px}
+.type[title]{cursor:help}
+h3{font-size:11.5px;text-transform:uppercase;letter-spacing:.7px;color:var(--ink3);margin:22px 0 8px;font-weight:600}
+.text{font-family:var(--serif);font-size:16px;line-height:1.6;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:14px 16px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.two .cap{font:600 11px var(--sans);text-transform:uppercase;letter-spacing:.6px;color:var(--ink3);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center}
+.text del{background:var(--del);color:var(--del-ink);text-decoration:line-through;text-decoration-thickness:1px;border-radius:2px}
+.text ins{background:var(--ins);color:var(--ins-ink);text-decoration:none;border-radius:2px}
+.copy{border:1px solid var(--line);background:var(--panel2);border-radius:4px;padding:1px 8px;font:500 11px var(--sans);text-transform:none;letter-spacing:0;color:var(--ink2)}
+.explain{font-size:14.5px;line-height:1.6;max-width:75ch}
+.notice{border-left:3px solid var(--imp);background:var(--imp-s);padding:8px 12px;border-radius:0 6px 6px 0;margin:10px 0;font-size:13.5px}
+.notice.bad{border-color:var(--fix);background:var(--fix-s)}
+.ev{border:1px solid var(--line);border-radius:var(--r);background:var(--panel);margin-bottom:10px;overflow:hidden}
+.ev blockquote{margin:0;padding:12px 16px;font-family:var(--serif);font-size:15px;line-height:1.55;border-left:3px solid var(--acc)}
+.ev .foot{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:7px 12px;background:var(--panel2);font-size:12.5px;border-top:1px solid var(--line)}
+.ev .foot .grow{flex:1}
+.lnk{border:0;background:none;color:var(--acc);padding:0;font-size:12.5px;text-decoration:underline;text-underline-offset:2px}
+.choices{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+.choices button{border:1px solid var(--line);background:var(--panel);border-radius:6px;padding:6px 11px;font-size:13px}
+.choices button.on{background:var(--acc-soft);border-color:var(--acc);font-weight:600}
+.choices button:disabled{opacity:.5;cursor:not-allowed}
+textarea{width:100%;min-height:64px;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink);font:inherit;resize:vertical}
+.meta{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:13px;color:var(--ink2)}
+.meta dt{color:var(--ink3)}
+.meta dd{margin:0}
+
+#log{position:fixed;right:16px;bottom:16px;width:min(560px,calc(100vw - 32px));max-height:55vh;background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:0 12px 40px rgba(0,0,0,.18);display:none;flex-direction:column;z-index:30}
+#log.visible{display:flex}
+#log .head{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--line);font-size:13px}
+#log .head b{flex:1}
+#log .body{overflow:auto;padding:8px 12px;font:12px/1.5 var(--mono)}
+.lg{padding:2px 0;white-space:pre-wrap;word-break:break-word}
+.lg.sub{padding-left:16px;color:var(--ink3)}
+.lg .h{color:var(--ink3);margin-right:6px}
+.lg.text{color:var(--ink);font-family:var(--sans);font-size:13px;background:none;border:0;padding:2px 0}
+.lg.error{color:var(--fix)}
+.lg.done{color:var(--ok);font-family:var(--sans);font-size:13px}
+.spin{width:12px;height:12px;border:2px solid var(--line);border-top-color:var(--acc);border-radius:50%;animation:spin .8s linear infinite;display:inline-block}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+#modal{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:40;padding:20px}
+#modal.visible{display:flex}
+#modal .box{background:var(--panel);border-radius:10px;max-width:820px;width:100%;max-height:85vh;display:flex;flex-direction:column;border:1px solid var(--line)}
+#modal .head{display:flex;gap:10px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+#modal .head b{flex:1}
+#modal .body{overflow:auto;padding:18px 22px;font-family:var(--serif);font-size:15px;line-height:1.65;white-space:pre-wrap}
+mark{background:#ffe38a;color:#000;border-radius:2px;padding:0 1px}
+
+.welcome{max-width:620px;margin:40px auto;font-size:15px;line-height:1.6}
+.welcome h2{font-family:var(--serif);font-weight:600}
+.welcome ol li{margin-bottom:8px}
+code{font-family:var(--mono);font-size:.92em;background:var(--panel2);padding:1px 5px;border-radius:4px}
+
+/* sources */
+.sources{display:flex;flex-direction:column;gap:8px;margin-bottom:12px}
+.src{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:8px 10px}
+.src-h{display:flex;align-items:center;gap:6px;font-size:11px;text-transform:uppercase;letter-spacing:.6px;color:var(--ink3);font-weight:600}
+.src-h .grow{flex:1}
+.src-path{font:12px/1.4 var(--mono);color:var(--ink);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;direction:rtl;text-align:left}
+.src-meta{font-size:11.5px;color:var(--ink3);margin-top:2px}
+.src select{width:100%;margin-top:6px;font:12px var(--sans);padding:3px 4px;border:1px solid var(--line);border-radius:4px;background:var(--panel);color:var(--ink)}
+.src.missing{border-color:var(--imp);background:var(--imp-s)}
+.ico{width:14px;height:14px;flex:none;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;vertical-align:-2px}
+.tree-item .name .ico{margin-right:4px;color:var(--ink3)}
+.tree-item.file .name{font-family:var(--mono);font-size:12px}
+.tree-item.muted-row{opacity:.75}
+.tree-item .chev{display:inline-block;width:12px;font-size:10px;line-height:1;vertical-align:1px;color:var(--ink3)}
+
+/* folder picker + sign-in */
+.dialog{position:fixed;inset:0;background:rgba(0,0,0,.35);display:none;align-items:center;justify-content:center;z-index:45;padding:20px}
+.dialog.visible{display:flex}
+.dialog .box{background:var(--panel);border-radius:10px;width:100%;max-width:640px;max-height:85vh;display:flex;flex-direction:column;border:1px solid var(--line);box-shadow:0 20px 60px rgba(0,0,0,.25)}
+.dialog .head{display:flex;gap:10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.dialog .head b{flex:1;font-size:15px}
+.dialog .pad{padding:14px 16px}
+.pk-bar{display:flex;gap:6px;padding:10px 16px 6px}
+.pk-bar input{flex:1;font:12.5px var(--mono);padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.pk-roots{display:flex;gap:6px;flex-wrap:wrap;padding:0 16px 8px}
+.pk-roots button{border:1px solid var(--line);background:var(--panel2);border-radius:999px;padding:2px 10px;font-size:12px}
+.pk-list{flex:1;overflow:auto;border-top:1px solid var(--line);border-bottom:1px solid var(--line);min-height:220px}
+.pk-list button{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:none;padding:7px 16px;font-size:13.5px}
+.pk-list button:hover{background:var(--panel2)}
+.pk-foot{display:flex;gap:8px;align-items:center;padding:10px 16px;flex-wrap:wrap}
+.pk-foot .grow{flex:1;font-size:12.5px;color:var(--ink2)}
+.field{display:flex;gap:6px;margin-top:8px}
+.field input{flex:1;font:13px var(--mono);padding:7px 9px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+.steps{margin:0;padding-left:20px;font-size:14px;line-height:1.6}
+.steps li{margin-bottom:8px}
+
+/* account */
+.account{position:relative}
+.avatar{width:34px;height:34px;border-radius:50%;border:0;background:var(--acc);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;letter-spacing:.3px}
+@media (prefers-color-scheme:dark){.avatar{color:#111}}
+.avatar:focus-visible,.btn:focus-visible{outline:2px solid var(--acc);outline-offset:2px}
+.acct-menu{display:none;position:absolute;right:0;top:calc(100% + 8px);width:280px;background:var(--panel);border:1px solid var(--line);border-radius:var(--r);box-shadow:0 8px 24px rgba(0,0,0,.14);z-index:25;padding:14px}
+.account.open .acct-menu{display:block}
+.acct-top{display:flex;gap:12px;align-items:center}
+.acct-top .avatar{width:44px;height:44px;font-size:16px;flex:none}
+.acct-name{font-weight:600;font-size:14px}
+.acct-mail{font-size:12.5px;color:var(--ink2);word-break:break-all}
+.acct-plan{font-size:12px;color:var(--ink3);margin:10px 0 12px}
+.acct-menu .btn{width:100%}
+.dot-ok{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block;margin-right:6px}
+
+@media (max-width:1100px){main{display:block;overflow:auto}aside,.col{overflow:visible}.col.detail{border-top:1px solid var(--line)}.two{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <div class="brand" data-t="brand">Citation Checker<small id="project">…</small></div>
+  <div class="chips" id="chips"></div>
+  <div class="actions">
+    <div class="lang" role="group" aria-label="Language / Idioma">
+      <button data-lang="en">EN</button><button data-lang="es">ES</button>
+    </div>
+    <button class="btn" id="reload" data-t="reload">Refresh</button>
+    <button class="btn pri" id="verifyPending" data-t="verifyPending">Verify pending</button>
+    <div class="menu" id="menu">
+      <button class="btn" id="menuBtn" data-t="more">More ▾</button>
+      <div class="items">
+        <button data-act="scan"><b data-t="m.scan"></b><small data-t="m.scanSub"></small></button>
+        <button data-act="init"><b data-t="m.init">Prepare project</b><small data-t="m.initSub"></small></button>
+        <button data-act="claims"><b data-t="m.claims"></b><small data-t="m.claimsSub"></small></button>
+        <button data-act="verify" data-args="all"><b data-t="m.all"></b><small data-t="m.allSub"></small></button>
+        <button data-act="report"><b data-t="m.report"></b><small data-t="m.reportSub"></small></button>
+        <a href="/reports/report.xlsx"><b data-t="m.excel"></b><small>reports/report.xlsx</small></a>
+        <button id="showLog"><b data-t="m.log"></b></button>
+      </div>
+    </div>
+    <div class="account" id="account"></div>
+  </div>
+</header>
+
+<main>
+  <aside>
+    <div class="sources" id="sources"></div>
+    <div class="tabs"><button data-view="thesis" class="on" data-t="tab.thesis"></button><button data-view="papers" data-t="tab.papers"></button></div>
+    <div id="tree"></div>
+  </aside>
+  <div class="col claims">
+    <input class="search" id="search" data-tp="searchPh">
+    <div id="list"></div>
+  </div>
+  <div class="col detail" id="detail"></div>
+</main>
+
+<div id="log">
+  <div class="head"><span id="logSpin"></span><b id="logTitle"></b>
+    <button class="btn" id="logCancel" data-t="cancel"></button><button class="btn" id="logClose" data-t="close"></button></div>
+  <div class="body" id="logBody"></div>
+</div>
+
+<div id="modal"><div class="box">
+  <div class="head"><b id="modTitle"></b><button class="btn" id="modPrev" aria-label="Previous page">‹</button><button class="btn" id="modNext" aria-label="Next page">›</button><a class="btn" id="modPdf" target="_blank" data-t="openPdf"></a><button class="btn" id="modClose" data-t="close"></button></div>
+  <div class="body" id="modBody"></div>
+</div></div>
+
+<div class="dialog" id="picker" role="dialog" aria-modal="true" aria-labelledby="pkTitle"><div class="box">
+  <div class="head"><b id="pkTitle"></b><button class="btn" id="pkClose" data-t="cancel"></button></div>
+  <div class="pk-bar"><button class="btn" id="pkUp" aria-label="Up">↑</button><input id="pkPath" spellcheck="false" aria-label="Path"><button class="btn" id="pkGo" data-t="go"></button></div>
+  <div class="pk-roots" id="pkRoots"></div>
+  <div class="pk-list" id="pkList"></div>
+  <div class="pk-foot"><span class="grow" id="pkInfo"></span><button class="btn" id="pkNative" data-t="systemDialog"></button><button class="btn pri" id="pkUse" data-t="useFolder"></button></div>
+</div></div>
+
+<div class="dialog" id="login" role="dialog" aria-modal="true" aria-labelledby="lgTitle"><div class="box" style="max-width:520px">
+  <div class="head"><b id="lgTitle" data-t="signInTitle"></b><button class="btn" id="lgClose" data-t="cancel"></button></div>
+  <div class="pad" id="lgBody"></div>
+</div></div>
+
+<script>
+/* ---------------- translations ---------------- */
+const I18N = {
+  en: {
+    brand: "Citation Checker", reload: "Refresh", verifyPending: "Verify pending", more: "More ▾",
+    "m.init": "Prepare project", "m.initSub": "Extract text from PDFs and thesis (/cite-init)",
+    "m.claims": "Extract claims from the thesis", "m.claimsSub": "Updates claims.csv (/cite-claims)",
+    "m.all": "Re-verify everything", "m.allSub": "Uses more of your plan",
+    "m.report": "Re-check quotes and report", "m.reportSub": "No AI, instant",
+    "m.excel": "Download Excel", "m.log": "Show last job log",
+    "tab.sections": "Sections", "tab.papers": "Papers", searchPh: "Search claims, papers, ids…  ( / )",
+    cancel: "Cancel", close: "Close", openPdf: "Open PDF",
+    action: {fix: "Fix", unverified: "Unverified evidence", improve: "Improve", manual: "Review by hand", pending: "Pending", no_pdf: "No PDF", ok: "Correct"},
+    verdict: {correct: "Correct", partial: "Partially correct", misrepresented: "Misrepresented", not_found: "Not in the paper", unverifiable: "Unverifiable"},
+    severity: {none: "no error", minor: "minor error", moderate: "moderate error", major: "major error"},
+    confidence: c => `${c} confidence`, confWord: {high: "high", medium: "medium", low: "low"},
+    multiple: "sentence with several citations",
+    types: {
+      causality: ["Causality", "The paper shows an association; the thesis presents it as a cause."],
+      overgeneralization: ["Overgeneralization", "The finding is extended beyond the study's sample, country or context."],
+      overstatement: ["Overstatement", "The thesis says it more strongly than the paper (e.g. “proves” instead of “suggests”)."],
+      wrong_data: ["Wrong data", "A figure, year, sample size or place does not match."],
+      missing_nuance: ["Missing nuance", "An important condition, limitation or exception is left out."],
+      secondary_citation: ["Secondary citation", "The paper only mentions it while citing another author: cite the original source."],
+      misattribution: ["Misattribution", "The idea belongs to another author or another work."],
+      inexact_quote: ["Inexact quote", "The words in quotation marks do not match the original."],
+      contradicts: ["Contradicts", "The paper says the opposite."],
+      not_present: ["Not present", "Nothing in the paper supports it."],
+    },
+    check: {exact: "Verified in the PDF", close: "Matches (minor differences)", doubtful: "Doubtful match", not_found: "NOT in the PDF", unchecked: "Not checked"},
+    pageWarn: (s, f) => `Says p. ${s}, but the text is on p. ${f}`,
+    decisions: {apply: "I'll apply the suggestion", fixed: "Already fixed", keep: "Keeping my text", discuss: "Will discuss with my advisor"},
+    remove: "Clear", notePh: "Notes for yourself (saved in claims/review.json)",
+    reviewedByYou: "Reviewed by you", wholeChapter: "Whole chapter", sectionsLabel: "Sections", noSection: "(no section)",
+    withProblems: n => `${n} with problems`, noProblems: "no problems found", allPapers: "All papers",
+    paperState: {no_pdf: "no PDF", scanned: "needs OCR", not_cited: "not cited", pending: "pending", verified: "verified"},
+    noClaims: "No claims recorded yet.", noMatch: "Nothing matches the filter.", pick: "Pick a claim from the list.",
+    paragraph: "paragraph", citation: "citation",
+    noPdfHere: "This paper is not in the papers/ folder.", notVerified: "This paper has not been verified yet.",
+    fidelity: "Fidelity to the paper", meter: ["says something else", "nuance", "exact"],
+    unverifiedNotice: "<b>Don't trust this verdict.</b> The AI marked it as supported, but the quote it gave as evidence is not in the PDF text. Check it by hand or ask for a second opinion.",
+    secondaryNotice: "<b>Secondary citation:</b> the paper only mentions this idea while citing another author. It is usually better to cite the original source (or use “cited in”).",
+    wroteVsShould: "What you wrote → what it should say", youWrote: "What you wrote", yourThesis: "Your thesis",
+    proposal: "Wording faithful to the paper", copy: "Copy", copied: "Copied ✓", context: "Context",
+    why: "Why", paperSays: "What the paper says", seeContext: "See in context",
+    yourDecision: "Your decision", withClaude: "With Claude Code",
+    secondOpinion: id => `Ask for a second opinion on ${id}`, reverify: k => `Re-verify ${k}`,
+    paper: "Paper", key: "Key", title: "Title", authors: "Authors", summary: "Summary", verifiedOn: "Verified",
+    page: (k, p, t) => `${k} — page ${p} of ${t}`, emptyPage: "(empty page)",
+    welcomeTitle: "Let's get started",
+    welcome: (pdfs, thesis) => [
+      `Choose the folder with your papers (subfolders included). ${pdfs ? `<b>✓ ${pdfs} PDFs found.</b>` : `<button class="btn" data-pick="papers">Choose…</button>`}`,
+      `Choose your thesis folder (LaTeX project or .docx/.md). ${thesis ? `<b>✓ ${thesis}</b>` : `<button class="btn" data-pick="thesis">Choose…</button>`}`,
+      "Sign in to Claude (top right), then click <b>More ▾ → Extract claims from the thesis</b>.",
+      "Review <code>claims/claims.csv</code> in Excel and click <b>Verify pending</b>."],
+    noClaude: "Claude Code was not found on this computer. Install it and sign in by running <code>claude</code> once in a terminal.",
+    jobs: {scan: "Scanning folders", init: "Preparing project", claims: "Extracting claims", verify: "Verifying", review: "Second opinion", report: "Re-checking quotes"},
+    running: "…", finished: " — done", failed: " — with errors", noJobs: "No jobs yet",
+    errors: {busy: "A job is already running.", unknown_action: "Unknown action.", bad_arguments: "Invalid characters in the arguments."},
+    "tab.thesis": "Thesis", go: "Go", systemDialog: "System dialog…", useFolder: "Use this folder",
+    papersFolder: "Papers folder", thesisFolder: "Thesis", change: "Change", choose: "Choose…",
+    notSet: "Not found — choose a folder", mainFile: "Main file", autoDetected: "detected automatically",
+    pdfCount: (n, f) => `${n} PDF${n === 1 ? "" : "s"} · ${f} folder${f === 1 ? "" : "s"}`,
+    files: (n, p) => `${n} file${n === 1 ? "" : "s"} · ${p} paragraphs`,
+    pickPapers: "Choose the folder with your papers", pickThesis: "Choose your thesis folder",
+    pkInfo: (pdfs, docs) => `Here: ${pdfs} PDF${pdfs === 1 ? "" : "s"}, ${docs} .tex/.docx/.md · subfolders are included`,
+    nativeUnavailable: "The system dialog is not available here; use the list instead.",
+    notAFolder: "That folder does not exist.",
+    wholeThesis: "Whole thesis", missingIncludes: n => `${n} included file${n === 1 ? "" : "s"} not found`,
+    noStructure: "Run “Scan folders” to read the thesis structure.",
+    missingFromFolder: "Cited but not in the folder", rootFolder: "(top folder)",
+    papersInFolder: n => `${n} paper${n === 1 ? "" : "s"}`,
+    scan: "Scan folders", "m.scan": "Scan folders again", "m.scanSub": "Re-reads PDFs and thesis (no AI)",
+    signIn: "Sign in to Claude", signOut: "Sign out", signInTitle: "Sign in to Claude",
+    signedInAs: "Signed in with Claude Code", plan: "Plan", notInstalled: "Claude Code not installed",
+    loginSteps: [
+      "A browser tab opens on claude.ai. Sign in with the account you want to use.",
+      "Approve access for Claude Code.",
+      "If the page shows a code, paste it below. Otherwise this window closes by itself."],
+    openSignIn: "Open the sign-in page", codePh: "Paste the code here", send: "Send",
+    waiting: "Waiting for you to finish signing in…", loginFailed: "Sign-in did not finish. Try again.",
+    loginDone: "Signed in.", signInFirst: "Sign in to Claude first (top right).",
+    fileLine: (f, l) => l ? `${f}:${l}` : f,
+  },
+  es: {
+    brand: "Verificador de citas", reload: "Actualizar", verifyPending: "Verificar pendientes", more: "Más ▾",
+    "m.init": "Preparar proyecto", "m.initSub": "Extrae el texto de PDFs y tesis (/cite-init)",
+    "m.claims": "Extraer afirmaciones de la tesis", "m.claimsSub": "Actualiza claims.csv (/cite-claims)",
+    "m.all": "Re-verificar todo", "m.allSub": "Consume más uso de tu plan",
+    "m.report": "Recomprobar citas y reporte", "m.reportSub": "Sin IA, instantáneo",
+    "m.excel": "Descargar Excel", "m.log": "Ver registro del último trabajo",
+    "tab.sections": "Secciones", "tab.papers": "Papers", searchPh: "Buscar en afirmaciones, papers, ids…  ( / )",
+    cancel: "Cancelar", close: "Cerrar", openPdf: "Abrir PDF",
+    action: {fix: "Corregir", unverified: "Evidencia sin verificar", improve: "Mejorar", manual: "Revisar a mano", pending: "Pendiente", no_pdf: "Sin PDF", ok: "Correcta"},
+    verdict: {correct: "Correcta", partial: "Parcialmente correcta", misrepresented: "Tergiversada", not_found: "No aparece en el paper", unverifiable: "No verificable"},
+    severity: {none: "sin error", minor: "error leve", moderate: "error moderado", major: "error grave"},
+    confidence: c => `confianza ${c}`, confWord: {high: "alta", medium: "media", low: "baja"},
+    multiple: "frase con varias citas",
+    types: {
+      causality: ["Causalidad", "El paper muestra una asociación; la tesis la presenta como causa."],
+      overgeneralization: ["Generalización", "Se extiende el resultado más allá de la muestra, el país o el contexto del estudio."],
+      overstatement: ["Exageración", "La tesis lo dice con más fuerza que el paper (p. ej. «demuestra» en vez de «sugiere»)."],
+      wrong_data: ["Dato incorrecto", "Una cifra, año, tamaño de muestra o lugar no coincide."],
+      missing_nuance: ["Falta un matiz", "Se omite una condición, limitación o excepción importante."],
+      secondary_citation: ["Cita secundaria", "El paper solo lo menciona citando a otro autor: cita la fuente original."],
+      misattribution: ["Atribución errónea", "La idea es de otro autor o de otro trabajo."],
+      inexact_quote: ["Cita textual inexacta", "Las palabras entre comillas no coinciden con el original."],
+      contradicts: ["Contradice", "El paper dice lo contrario."],
+      not_present: ["No aparece", "No hay nada en el paper que lo respalde."],
+    },
+    check: {exact: "Comprobada en el PDF", close: "Coincide (con diferencias menores)", doubtful: "Coincidencia dudosa", not_found: "NO aparece en el PDF", unchecked: "Sin comprobar"},
+    pageWarn: (s, f) => `Dice p. ${s}, pero el texto está en p. ${f}`,
+    decisions: {apply: "Aplicaré la sugerencia", fixed: "Ya lo corregí", keep: "Mantengo mi texto", discuss: "Lo hablaré con mi tutor"},
+    remove: "Quitar", notePh: "Notas para ti (se guardan en claims/review.json)",
+    reviewedByYou: "Revisadas por ti", wholeChapter: "Todo el capítulo", sectionsLabel: "Secciones", noSection: "(sin sección)",
+    withProblems: n => `${n} con problemas`, noProblems: "sin problemas detectados", allPapers: "Todos los papers",
+    paperState: {no_pdf: "sin PDF", scanned: "necesita OCR", not_cited: "no citado", pending: "pendiente", verified: "verificado"},
+    noClaims: "Aún no hay afirmaciones registradas.", noMatch: "Nada coincide con el filtro.", pick: "Elige una afirmación de la lista.",
+    paragraph: "párrafo", citation: "cita",
+    noPdfHere: "Este paper no está en la carpeta papers/.", notVerified: "Este paper aún no se ha verificado.",
+    fidelity: "Fidelidad al paper", meter: ["dice otra cosa", "matiz", "exacta"],
+    unverifiedNotice: "<b>No te fíes de este veredicto.</b> La IA lo dio por bueno, pero la cita que aportó como prueba no aparece en el texto del PDF. Revísalo a mano o pide una segunda opinión.",
+    secondaryNotice: "<b>Cita secundaria:</b> el paper solo menciona esta idea citando a otro autor. Lo más correcto suele ser citar la fuente original (o «citado en»).",
+    wroteVsShould: "Lo que escribiste → lo que debería decir", youWrote: "Lo que escribiste", yourThesis: "Tu tesis",
+    proposal: "Propuesta fiel al paper", copy: "Copiar", copied: "Copiado ✓", context: "Contexto",
+    why: "Por qué", paperSays: "Lo que dice el paper", seeContext: "Ver en contexto",
+    yourDecision: "Tu decisión", withClaude: "Con Claude Code",
+    secondOpinion: id => `Pedir segunda opinión sobre ${id}`, reverify: k => `Re-verificar ${k}`,
+    paper: "Paper", key: "Clave", title: "Título", authors: "Autores", summary: "Resumen", verifiedOn: "Verificado",
+    page: (k, p, t) => `${k} — página ${p} de ${t}`, emptyPage: "(página vacía)",
+    welcomeTitle: "Empecemos",
+    welcome: (pdfs, thesis) => [
+      `Elige la carpeta de tus papers (se incluyen las subcarpetas). ${pdfs ? `<b>✓ ${pdfs} PDFs encontrados.</b>` : `<button class="btn" data-pick="papers">Elegir…</button>`}`,
+      `Elige la carpeta de tu tesis (proyecto LaTeX o .docx/.md). ${thesis ? `<b>✓ ${thesis}</b>` : `<button class="btn" data-pick="thesis">Elegir…</button>`}`,
+      "Inicia sesión en Claude (arriba a la derecha) y pulsa <b>Más ▾ → Extraer afirmaciones de la tesis</b>.",
+      "Revisa <code>claims/claims.csv</code> en Excel y pulsa <b>Verificar pendientes</b>."],
+    noClaude: "No encuentro Claude Code en este ordenador. Instálalo e inicia sesión ejecutando <code>claude</code> una vez en una terminal.",
+    jobs: {scan: "Escaneando carpetas", init: "Preparando proyecto", claims: "Extrayendo afirmaciones", verify: "Verificando", review: "Segunda opinión", report: "Recomprobando citas"},
+    running: "…", finished: " — terminado", failed: " — con errores", noJobs: "Sin trabajos",
+    errors: {busy: "Ya hay un trabajo en curso.", unknown_action: "Acción desconocida.", bad_arguments: "Caracteres no permitidos en los argumentos."},
+    "tab.thesis": "Tesis", go: "Ir", systemDialog: "Diálogo del sistema…", useFolder: "Usar esta carpeta",
+    papersFolder: "Carpeta de papers", thesisFolder: "Tesis", change: "Cambiar", choose: "Elegir…",
+    notSet: "No encontrada — elige una carpeta", mainFile: "Archivo principal", autoDetected: "detectado automáticamente",
+    pdfCount: (n, f) => `${n} PDF${n === 1 ? "" : "s"} · ${f} carpeta${f === 1 ? "" : "s"}`,
+    files: (n, p) => `${n} archivo${n === 1 ? "" : "s"} · ${p} párrafos`,
+    pickPapers: "Elige la carpeta de tus papers", pickThesis: "Elige la carpeta de tu tesis",
+    pkInfo: (pdfs, docs) => `Aquí: ${pdfs} PDF${pdfs === 1 ? "" : "s"}, ${docs} .tex/.docx/.md · se incluyen las subcarpetas`,
+    nativeUnavailable: "El diálogo del sistema no está disponible aquí; usa la lista.",
+    notAFolder: "Esa carpeta no existe.",
+    wholeThesis: "Toda la tesis", missingIncludes: n => `${n} archivo${n === 1 ? "" : "s"} incluido${n === 1 ? "" : "s"} no encontrado${n === 1 ? "" : "s"}`,
+    noStructure: "Pulsa «Escanear carpetas» para leer la estructura de la tesis.",
+    missingFromFolder: "Citados pero no están en la carpeta", rootFolder: "(carpeta principal)",
+    papersInFolder: n => `${n} paper${n === 1 ? "" : "s"}`,
+    scan: "Escanear carpetas", "m.scan": "Volver a escanear carpetas", "m.scanSub": "Relee PDFs y tesis (sin IA)",
+    signIn: "Iniciar sesión en Claude", signOut: "Cerrar sesión", signInTitle: "Iniciar sesión en Claude",
+    signedInAs: "Sesión iniciada en Claude Code", plan: "Plan", notInstalled: "Claude Code no está instalado",
+    loginSteps: [
+      "Se abre una pestaña en claude.ai. Inicia sesión con la cuenta que quieras usar.",
+      "Autoriza el acceso a Claude Code.",
+      "Si la página te muestra un código, pégalo abajo. Si no, esta ventana se cierra sola."],
+    openSignIn: "Abrir la página de inicio de sesión", codePh: "Pega aquí el código", send: "Enviar",
+    waiting: "Esperando a que termines de iniciar sesión…", loginFailed: "No se completó el inicio de sesión. Inténtalo de nuevo.",
+    loginDone: "Sesión iniciada.", signInFirst: "Primero inicia sesión en Claude (arriba a la derecha).",
+    fileLine: (f, l) => l ? `${f}:${l}` : f,
+  },
+};
+
+const ACTION_COLOR = {fix: "fix", unverified: "unv", improve: "imp", manual: "unv", pending: "pen", no_pdf: "pen", ok: "ok"};
+const ORDER = ["fix", "unverified", "improve", "manual", "pending", "no_pdf", "ok"];
+const PROBLEMS = ["fix", "improve", "unverified"];
+
+let D = null, A = null, lang = "en", T = I18N.en, sel = null, view = "thesis", treeFilter = null, actionFilter = null, q = "";
+let collapsed = new Set(), treeNodes = [], picker = null, loginTimer = null;
+let logSince = 0, logTimer = null, modalState = null;
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+const cv = k => `var(--${k})`;
+const badge = a => `<span class="badge" style="background:${cv(ACTION_COLOR[a] + "-s")};color:${cv(ACTION_COLOR[a])}">${esc(T.action[a])}</span>`;
+
+function storedLang() { try { return localStorage.getItem("lang"); } catch { return null; } }
+function setLang(l, persist = true) {
+  lang = I18N[l] ? l : "en"; T = I18N[lang];
+  document.documentElement.lang = lang;
+  try { localStorage.setItem("lang", lang); } catch {}
+  if (persist) fetch("/api/config", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({language: lang})});
+  document.querySelectorAll(".lang button").forEach(b => b.classList.toggle("on", b.dataset.lang === lang));
+  document.querySelectorAll("[data-t]").forEach(el => {
+    const v = T[el.dataset.t]; if (typeof v !== "string") return;
+    if (el.classList.contains("brand")) el.firstChild.nodeValue = v; else el.textContent = v;
+  });
+  document.querySelectorAll("[data-tp]").forEach(el => el.placeholder = T[el.dataset.tp]);
+  document.title = T.brand;
+  if (D) render();
+}
+
+async function load(keep = true) {
+  D = await (await fetch("/api/data")).json();
+  $("#project").textContent = `${D.project} · ${D.sources.thesis_main || "—"}`;
+  if (!keep || !D.claims.find(c => c.id === sel)) sel = (sorted()[0] || {}).id || null;
+  render();
+}
+
+const sorted = () => [...D.claims].sort((a, b) => ORDER.indexOf(a.action) - ORDER.indexOf(b.action) || a.id.localeCompare(b.id));
+const paraNum = c => parseInt(String(c.paragraph || "").replace(/\D/g, ""), 10) || 0;
+const paperOf = key => D.papers.find(p => p.key === key) || {};
+const paperLabel = key => { const p = paperOf(key); return p.authors ? `${p.authors.split(";")[0].trim()}${p.authors.includes(";") ? " et al." : ""}${p.year ? " " + p.year : ""}` : (p.file ? p.file.split("/").pop().replace(/\.pdf$/i, "") : key); };
+function matchesTree(c, f) {
+  if (!f) return true;
+  if (f.kind === "range") { const n = paraNum(c); return n >= f.first && n <= f.last; }
+  if (f.kind === "section") return (c.section || T.noSection) === f.value;
+  if (f.kind === "paper") return c.paper_key === f.value;
+  if (f.kind === "missing") return !paperOf(c.paper_key).pdf;
+  if (f.kind === "folder") { const fo = paperOf(c.paper_key).folder; return paperOf(c.paper_key).pdf && (fo === f.value || (f.value !== "" && fo.startsWith(f.value + "/")) || f.value === null); }
+  return true;
+}
+function filtered() {
+  const t = q.toLowerCase();
+  return sorted().filter(c =>
+    (!actionFilter || c.action === actionFilter) && matchesTree(c, treeFilter) &&
+    (!t || [c.id, c.paper_key, c.claim, c.section, c.explanation].join(" ").toLowerCase().includes(t)));
+}
+
+function render() { renderSources(); renderChips(); renderTree(); renderList(); renderDetail(); renderAccount(); }
+
+function renderChips() {
+  const n = {}; D.claims.forEach(c => n[c.action] = (n[c.action] || 0) + 1);
+  const reviewed = D.claims.filter(c => c.review).length;
+  $("#chips").innerHTML = ORDER.filter(a => n[a]).map(a =>
+    `<button class="chip ${actionFilter === a ? "on" : ""}" data-f="${a}"><span class="dot" style="background:${cv(ACTION_COLOR[a])}"></span>${esc(T.action[a])} <b>${n[a]}</b></button>`).join("")
+    + (D.claims.length ? `<span class="chip muted">${T.reviewedByYou} <b>${reviewed}/${D.claims.length}</b></span>` : "");
+  document.querySelectorAll("#chips [data-f]").forEach(b => b.onclick = () => { actionFilter = actionFilter === b.dataset.f ? null : b.dataset.f; render(); });
+}
+
+function bar(cs) {
+  const n = {}; cs.forEach(c => n[c.action] = (n[c.action] || 0) + 1);
+  return `<div class="bar">${ORDER.filter(a => n[a]).map(a => `<i style="width:${100 * n[a] / cs.length}%;background:${cv(ACTION_COLOR[a])}"></i>`).join("")}</div>`;
+}
+
+const ICON = {
+  folder: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M1.5 4.5v8h13v-7H7.5L6 4H1.5z"/></svg>',
+  file: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.5h5.5L12.5 4.5v10h-8.5z"/><path d="M9.5 1.5v3h3"/></svg>',
+  doc: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 3h10M3 6.5h10M3 10h7"/></svg>',
+  pdf: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 1.5h5.5L12.5 4.5v10h-8.5z"/><path d="M6 9.5h4M6 12h3"/></svg>',
+  warn: '<svg class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l6.5 11.5h-13z"/><path d="M8 6.5v3M8 11.5v.5"/></svg>',
+};
+const short = p => { const parts = String(p).split(/[\\/]/).filter(Boolean); return parts.length > 2 ? "…/" + parts.slice(-2).join("/") : p; };
+
+function renderSources() {
+  const S = D.sources, pdfs = D.papers.filter(p => p.pdf), folders = new Set(pdfs.map(p => p.folder)).size;
+  const st = D.structure;
+  const cands = S.thesis_candidates || [];
+  $("#sources").innerHTML = `
+    <div class="src ${S.papers_exists && pdfs.length ? "" : "missing"}">
+      <div class="src-h">${ICON.folder}<span class="grow">${T.papersFolder}</span><button class="lnk" data-pick="papers">${S.papers_exists ? T.change : T.choose}</button></div>
+      <div class="src-path" title="${esc(S.papers_dir)}"><bdi>${esc(S.papers_exists ? short(S.papers_dir) : T.notSet)}</bdi></div>
+      ${S.papers_exists ? `<div class="src-meta">${T.pdfCount(pdfs.length, folders)}</div>` : ""}
+    </div>
+    <div class="src ${S.thesis_exists && S.thesis_main ? "" : "missing"}">
+      <div class="src-h">${ICON.doc}<span class="grow">${T.thesisFolder}</span><button class="lnk" data-pick="thesis">${S.thesis_exists ? T.change : T.choose}</button></div>
+      <div class="src-path" title="${esc(S.thesis_dir)}"><bdi>${esc(S.thesis_exists ? short(S.thesis_dir) : T.notSet)}</bdi></div>
+      ${S.thesis_main ? `<div class="src-meta">${T.mainFile}: <b>${esc(S.thesis_main)}</b>${st ? " · " + T.files(st.files.length, st.paragraph_count || 0) : ""}</div>` : ""}
+      ${cands.length > 1 ? `<select id="mainSel" aria-label="${esc(T.mainFile)}">${cands.map(c => `<option ${c === S.thesis_main ? "selected" : ""}>${esc(c)}</option>`).join("")}</select>` : ""}
+      ${st && st.missing && st.missing.length ? `<div class="src-meta" style="color:var(--imp)" title="${esc(st.missing.map(m => m.in + " → " + m.target).join("\n"))}">${ICON.warn} ${T.missingIncludes(st.missing.length)}</div>` : ""}
+    </div>`;
+  $("#sources").querySelectorAll("[data-pick]").forEach(b => b.onclick = () => openPicker(b.dataset.pick));
+  const ms = $("#mainSel");
+  if (ms) ms.onchange = () => setSources({thesis_main: ms.value});
+}
+
+function counted(cs, label, sub, filter, cls = "", indent = 0, icon = "", chev = "") {
+  const id = treeNodes.push(filter) - 1;
+  const on = treeFilter && JSON.stringify(treeFilter) === JSON.stringify(filter);
+  return `<button class="tree-item ${cls} ${on || (!treeFilter && !filter) ? "on" : ""}" data-node="${id}" style="padding-left:${8 + indent * 14}px" title="${esc(sub)}">
+    <div class="name"><span>${chev}${icon}${esc(label)}</span><span class="muted">${cs.length || ""}</span></div>
+    ${sub && cls !== "heading" ? `<div class="sub">${esc(sub)}</div>` : ""}${cs.length ? bar(cs) : ""}</button>`;
+}
+
+function thesisTree() {
+  const st = D.structure;
+  if (!st || !st.files || !st.files.length) {  // fallback: group by the section column
+    const g = {}; D.claims.forEach(c => (g[c.section || T.noSection] ||= []).push(c));
+    return counted(D.claims, T.wholeThesis, "", null) + `<div class="label">${T.sectionsLabel}</div>` +
+      Object.keys(g).sort((a, b) => a.localeCompare(b, lang, {numeric: true})).map(k => counted(g[k], k, "", {kind: "section", value: k})).join("") +
+      `<div class="empty" style="padding:16px 8px">${T.noStructure}</div>`;
+  }
+  const inR = (f, l) => D.claims.filter(c => { const n = paraNum(c); return n >= f && n <= l; });
+  const kids = {}; st.files.forEach((f, i) => (kids[f.parent ?? ""] ||= []).push({...f, i}));
+  const render = (file, indent) => {
+    const fid = "f:" + file.file, last = file.last ?? file.first - 1, open = !collapsed.has(fid);
+    let h = counted(inR(file.first, last), file.file.split("/").pop(), file.file,
+      {kind: "range", first: file.first, last, node: fid}, "file", indent, ICON.file, `<span class="chev">${(kids[file.file] || []).length || st.headings.some(x => x.file === file.file) ? (open ? "▾" : "▸") : ""}</span>`);
+    if (!open) return h;
+    const items = [
+      ...st.headings.filter(x => x.file === file.file && (x.level <= 3 || inR(x.first, x.last).length)).map((x, k) => ({t: "h", x, at: x.first, k})),
+      ...(kids[file.file] || []).map((x, k) => ({t: "f", x, at: x.first, k: 1000 + k})),
+    ].sort((a, b) => a.at - b.at || a.k - b.k);
+    for (const it of items) {
+      if (it.t === "h") h += counted(inR(it.x.first, it.x.last), it.x.title, T.fileLine(it.x.file, it.x.line),
+        {kind: "range", first: it.x.first, last: it.x.last, node: "h:" + it.x.file + ":" + it.x.line}, "heading", indent + it.x.level, "", "");
+      else h += render(it.x, indent + 1);
+    }
+    return h;
+  };
+  return (kids[""] || []).map(f => render(f, 0)).join("");
+}
+
+function papersTree() {
+  const have = D.papers.filter(p => p.pdf), missing = D.papers.filter(p => !p.pdf);
+  const folders = new Set([""]);
+  have.forEach(p => { const parts = p.folder ? p.folder.split("/") : []; parts.forEach((_, i) => folders.add(parts.slice(0, i + 1).join("/"))); });
+  const claimsIn = f => D.claims.filter(c => matchesTree(c, {kind: "folder", value: f}));
+  const paperRow = (p, indent) => {
+    const cs = D.claims.filter(c => c.paper_key === p.key);
+    const stt = !p.pdf ? "no_pdf" : p.scanned ? "scanned" : !cs.length ? "not_cited" : cs.some(c => c.action === "pending") ? "pending" : "verified";
+    const who = (p.authors ? `${p.authors}${p.year ? " (" + p.year + ")" : ""} · ` : "") + T.paperState[stt];
+    const label = p.file ? p.file.split("/").pop().replace(/\.pdf$/i, "") : p.key;
+    return counted(cs, label, `${p.key} · ${who}`, {kind: "paper", value: p.key}, cs.length ? "" : "muted-row", indent, p.pdf ? ICON.pdf : ICON.warn);
+  };
+  const render = (folder, indent) => {
+    const fid = "d:" + folder, open = !collapsed.has(fid);
+    const subs = [...folders].filter(f => f !== folder && f.startsWith(folder ? folder + "/" : "") && !f.slice(folder ? folder.length + 1 : 0).includes("/") && f !== "").sort((a, b) => a.localeCompare(b, lang));
+    const here = have.filter(p => p.folder === folder).sort((a, b) => a.file.localeCompare(b.file, lang, {numeric: true}));
+    const total = have.filter(p => p.folder === folder || (folder === "" ? true : p.folder.startsWith(folder + "/"))).length;
+    let h = counted(claimsIn(folder === "" ? null : folder), folder ? folder.split("/").pop() : T.rootFolder, T.papersInFolder(total),
+      folder === "" ? null : {kind: "folder", value: folder, node: fid}, "file", indent, ICON.folder,
+      `<span class="chev">${folder && (subs.length || here.length) ? (open ? "▾" : "▸") : ""}</span>`);
+    if (!open && folder) return h;
+    subs.forEach(f => h += render(f, indent + 1));
+    here.forEach(p => h += paperRow(p, indent + 1));
+    return h;
+  };
+  let h = render("", 0);
+  if (missing.length) h += `<div class="label">${T.missingFromFolder}</div>` + missing.map(p => paperRow(p, 0)).join("");
+  return h;
+}
+
+function renderTree() {
+  treeNodes = [];
+  $("#tree").innerHTML = view === "thesis" ? thesisTree() : papersTree();
+  document.querySelectorAll("#tree [data-node]").forEach(b => b.onclick = () => {
+    const f = treeNodes[+b.dataset.node];
+    const same = f && treeFilter && JSON.stringify(f) === JSON.stringify(treeFilter);
+    if (f && f.node && (same || collapsed.has(f.node))) { collapsed.has(f.node) ? collapsed.delete(f.node) : collapsed.add(f.node); }
+    treeFilter = f;
+    const l = filtered(); if (l.length && !l.find(c => c.id === sel)) sel = l[0].id;
+    render();
+  });
+}
+
+/* ---------------- folder picker ---------------- */
+async function openPicker(kind) {
+  picker = {kind};
+  $("#pkTitle").textContent = kind === "papers" ? T.pickPapers : T.pickThesis;
+  const start = kind === "papers" ? (D.sources.papers_exists ? D.sources.papers_dir : "") : (D.sources.thesis_exists ? D.sources.thesis_dir : "");
+  $("#picker").classList.add("visible");
+  await browse(start);
+}
+async function browse(path) {
+  const j = await (await fetch(`/api/fs?path=${encodeURIComponent(path || "")}`)).json();
+  if (j.error) { $("#pkInfo").textContent = T.notAFolder; return; }
+  picker.path = j.path; picker.parent = j.parent;
+  $("#pkPath").value = j.path;
+  $("#pkRoots").innerHTML = j.roots.map(r => `<button data-path="${esc(r.path)}">${esc(r.name)}</button>`).join("");
+  $("#pkList").innerHTML = j.dirs.map(d => `<button data-path="${esc(d.path)}">${ICON.folder}${esc(d.name)}</button>`).join("") || `<div class="empty" style="padding:24px">—</div>`;
+  $("#pkInfo").textContent = T.pkInfo(j.pdfs, j.docs);
+  document.querySelectorAll("#pkRoots [data-path], #pkList [data-path]").forEach(b => b.onclick = () => browse(b.dataset.path));
+  $("#pkUp").disabled = !j.parent;
+}
+async function setSources(body) {
+  const j = await (await fetch("/api/sources", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify(body)})).json();
+  if (!j.ok) { $("#pkInfo").textContent = T.notAFolder; return false; }
+  $("#picker").classList.remove("visible");
+  treeFilter = null;
+  if (j.scanning) { logSince = 0; $("#logBody").innerHTML = ""; $("#log").classList.add("visible"); follow(); } else load();
+  return true;
+}
+$("#pkUp").onclick = () => picker && picker.parent && browse(picker.parent);
+$("#pkGo").onclick = () => browse($("#pkPath").value);
+$("#pkPath").onkeydown = e => { if (e.key === "Enter") browse($("#pkPath").value); };
+$("#pkClose").onclick = () => $("#picker").classList.remove("visible");
+$("#pkUse").onclick = () => setSources({[picker.kind === "papers" ? "papers_dir" : "thesis_dir"]: picker.path});
+$("#pkNative").onclick = async () => {
+  $("#pkNative").disabled = true;
+  const j = await (await fetch("/api/pick", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({title: $("#pkTitle").textContent, initial: picker.path || ""})})).json();
+  $("#pkNative").disabled = false;
+  if (j.error) { $("#pkInfo").textContent = T.nativeUnavailable; return; }
+  if (j.path) setSources({[picker.kind === "papers" ? "papers_dir" : "thesis_dir"]: j.path});
+};
+
+/* ---------------- Claude account ---------------- */
+const initials = a => {
+  const src = (a.name || "").trim();
+  if (src) return src.split(/\s+/).slice(0, 2).map(w => w[0]).join("").toUpperCase();
+  return (a.email || "?")[0].toUpperCase();
+};
+async function loadAccount(fresh = false) {
+  A = await (await fetch(`/api/account${fresh ? "?fresh=1" : ""}`)).json();
+  renderAccount();
+  return A;
+}
+function renderAccount() {
+  const el = $("#account");
+  if (!A) { el.innerHTML = `<span class="spin" aria-hidden="true"></span>`; return; }
+  if (!A.installed) { el.innerHTML = `<span class="chip muted" title="https://docs.claude.com/en/docs/claude-code/overview">${T.notInstalled}</span>`; return; }
+  if (!A.logged_in) {
+    el.innerHTML = `<button class="btn" id="signInBtn">${T.signIn}</button>`;
+    $("#signInBtn").onclick = startLogin; return;
+  }
+  const label = A.name || A.email || "Claude";
+  el.innerHTML = `<button class="avatar" id="avatarBtn" aria-haspopup="true" aria-label="${esc(label)}" title="${esc(label)}">${esc(initials(A))}</button>
+    <div class="acct-menu" role="menu">
+      <div class="acct-top"><span class="avatar" aria-hidden="true">${esc(initials(A))}</span>
+        <div><div class="acct-name">${esc(A.name || A.email || "Claude")}</div>${A.email && A.name ? `<div class="acct-mail">${esc(A.email)}</div>` : ""}</div></div>
+      <div class="acct-plan"><span class="dot-ok"></span>${T.signedInAs}${A.plan ? ` · ${T.plan}: ${esc(A.plan.charAt(0).toUpperCase() + A.plan.slice(1))}` : ""}${A.organization ? `<br>${esc(A.organization)}` : ""}</div>
+      <button class="btn" id="signOutBtn">${T.signOut}</button>
+    </div>`;
+  $("#avatarBtn").onclick = e => { e.stopPropagation(); el.classList.toggle("open"); };
+  $("#signOutBtn").onclick = async () => {
+    $("#signOutBtn").disabled = true;
+    await fetch("/api/account/logout", {method: "POST"});
+    el.classList.remove("open");
+    await loadAccount(true);
+  };
+}
+document.addEventListener("click", e => { if (!e.target.closest("#account")) $("#account").classList.remove("open"); });
+
+function loginBody(st) {
+  const failed = st && st.login && st.login.ok === false;
+  return `<ol class="steps">${T.loginSteps.map(x => `<li>${x}</li>`).join("")}</ol>
+    ${st && st.login && st.login.url ? `<a class="btn pri" href="${esc(st.login.url)}" target="_blank" rel="noopener">${T.openSignIn}</a>` : `<span class="spin"></span>`}
+    <div class="field"><input id="lgCode" placeholder="${esc(T.codePh)}" autocomplete="off" spellcheck="false" aria-label="${esc(T.codePh)}"><button class="btn" id="lgSend">${T.send}</button></div>
+    <p class="muted" style="font-size:13px;margin:12px 0 0" id="lgStatus">${failed ? T.loginFailed : T.waiting}</p>`;
+}
+async function startLogin() {
+  $("#login").classList.add("visible");
+  $("#lgBody").innerHTML = loginBody(null);
+  await fetch("/api/account/login", {method: "POST"});
+  pollLogin(true);
+}
+async function pollLogin(first = false) {
+  clearTimeout(loginTimer);
+  if (!$("#login").classList.contains("visible")) return;
+  const st = await (await fetch("/api/account" + (first ? "" : "?fresh=" + (Date.now() % 5 === 0 ? "1" : "0")))).json();
+  if (st.logged_in) { A = st; $("#login").classList.remove("visible"); renderAccount(); render(); return; }
+  const typed = $("#lgCode") ? $("#lgCode").value : "";
+  const hadUrl = !!$("#lgBody a.btn");
+  if (first || (!hadUrl && st.login.url) || (st.login.ok === false)) {
+    $("#lgBody").innerHTML = loginBody(st);
+    if (typed) $("#lgCode").value = typed;
+    $("#lgSend").onclick = async () => {
+      const code = $("#lgCode").value.trim(); if (!code) return;
+      await fetch("/api/account/code", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({code})});
+      $("#lgStatus").textContent = T.waiting;
+    };
+  }
+  if (!st.login.active && st.login.ok) { await loadAccount(true); if (A.logged_in) { $("#login").classList.remove("visible"); render(); return; } }
+  if (st.login.active || st.login.ok === null) loginTimer = setTimeout(pollLogin, 1500);
+}
+$("#lgClose").onclick = () => { fetch("/api/account/cancel", {method: "POST"}); $("#login").classList.remove("visible"); };
+
+function renderList() {
+  const l = filtered();
+  if (!D.claims.length) { $("#list").innerHTML = `<div class="empty">${T.noClaims}</div>`; return; }
+  if (!l.length) { $("#list").innerHTML = `<div class="empty">${T.noMatch}</div>`; return; }
+  $("#list").innerHTML = l.map(c => `<button class="card ${c.id === sel ? "on" : ""} ${c.review && c.review.status ? "has-rev" : ""}" data-id="${c.id}">
+      ${c.review && c.review.status ? `<span class="rev muted">✓ ${esc(T.decisions[c.review.status])}</span>` : ""}
+      <div class="top"><span class="id">${c.id}</span>${badge(c.action)}<span class="pk" title="${esc(c.paper_key)}">${esc(paperLabel(c.paper_key))}</span>${c.fidelity != null ? `<span class="fid">${esc(c.fidelity)}%</span>` : ""}</div>
+      <div class="txt">${esc(c.claim)}</div></button>`).join("");
+  document.querySelectorAll("#list .card").forEach(b => b.onclick = () => { sel = b.dataset.id; renderList(); renderDetail(); });
+}
+
+/* word-level diff (LCS) */
+function diff(a, b) {
+  const tok = s => s.match(/[\wÀ-ÿ]+|\s+|[^\s\wÀ-ÿ]/g) || [];
+  const A = tok(a), B = tok(b), n = A.length, m = B.length;
+  if (n * m > 250000) return [esc(a), esc(b)];
+  const L = Array.from({length: n + 1}, () => new Uint16Array(m + 1));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--) L[i][j] = A[i] === B[j] ? L[i + 1][j + 1] + 1 : Math.max(L[i + 1][j], L[i][j + 1]);
+  let i = 0, j = 0, x = "", y = "";
+  while (i < n || j < m) {
+    if (i < n && j < m && A[i] === B[j]) { x += esc(A[i]); y += esc(B[j]); i++; j++; }
+    else if (j < m && (i >= n || L[i][j + 1] >= L[i + 1][j])) { y += /^\s+$/.test(B[j]) ? B[j] : `<ins>${esc(B[j])}</ins>`; j++; }
+    else { x += /^\s+$/.test(A[i]) ? A[i] : `<del>${esc(A[i])}</del>`; i++; }
+  }
+  return [x.replace(/<\/del>(\s*)<del>/g, "$1"), y.replace(/<\/ins>(\s*)<ins>/g, "$1")];
+}
+
+function renderDetail() {
+  const el = $("#detail");
+  if (!D.claims.length) { el.innerHTML = welcome(); el.querySelectorAll("[data-pick]").forEach(b => b.onclick = () => openPicker(b.dataset.pick)); return; }
+  const c = D.claims.find(x => x.id === sel);
+  if (!c) { el.innerHTML = `<div class="empty">${T.pick}</div>`; return; }
+  const col = ACTION_COLOR[c.action], p = D.papers.find(x => x.key === c.paper_key) || {}, rv = c.review || {};
+  let h = `<div class="det-head"><span class="id">${c.id}</span><span>${esc(c.section)}</span><span>· ${T.paragraph} ${esc(c.paragraph)}</span>${D.structure && D.structure.paragraphs && D.structure.paragraphs[c.paragraph] ? `<span style="font-family:var(--mono);font-size:12px">· ${esc(T.fileLine(D.structure.paragraphs[c.paragraph].file, D.structure.paragraphs[c.paragraph].line))}</span>` : ""}<span>· ${T.citation}: ${esc(c.citation_in_thesis)}</span></div>`;
+
+  const sub = c.verdict
+    ? [c.severity && T.severity[c.severity], c.confidence && T.confidence(T.confWord[c.confidence] || c.confidence), c.multiple_citation === "yes" && T.multiple].filter(Boolean).map(esc).join(" · ")
+    : (c.action === "no_pdf" ? T.noPdfHere : T.notVerified);
+  h += `<div class="verdict" style="background:${cv(col + "-s")};color:${cv(col)}"><div><div class="big">${esc(c.verdict ? T.verdict[c.verdict] || c.verdict : T.action[c.action])}</div><div class="q">${sub}</div></div>`;
+  if (c.fidelity != null) {
+    const f = Math.max(0, Math.min(100, +c.fidelity));
+    h += `<div class="meter"><div style="font-size:12px;margin-bottom:5px;color:var(--ink2)">${T.fidelity}: <b style="color:var(--ink)">${f}%</b></div>
+      <div class="track"><span class="mark" style="left:${f}%"></span></div><div class="legend">${T.meter.map(x => `<span>${x}</span>`).join("")}</div></div>`;
+  }
+  h += `</div>`;
+  if (c.error_types.length) h += `<div class="types">${c.error_types.map(t => { const d = T.types[t] || [t, ""]; return `<span class="type" title="${esc(d[1])}">${esc(d[0])}</span>`; }).join("")}</div>`;
+  if (c.action === "unverified") h += `<div class="notice bad">${T.unverifiedNotice}</div>`;
+  if (c.secondary_citation) h += `<div class="notice">${T.secondaryNotice}</div>`;
+
+  if (c.suggestion) {
+    const [x, y] = diff(c.claim, c.suggestion);
+    h += `<h3>${T.wroteVsShould}</h3><div class="two">
+      <div class="text"><div class="cap">${T.yourThesis}</div>${x}</div>
+      <div class="text"><div class="cap">${T.proposal} <button class="copy" id="copyBtn">${T.copy}</button></div>${y}</div></div>`;
+  } else {
+    h += `<h3>${T.youWrote}</h3><div class="text">${esc(c.claim)}</div>`;
+  }
+  if (c.context) h += `<div class="muted" style="font-size:13px;margin-top:6px">${T.context}: ${esc(c.context)}</div>`;
+  if (c.explanation) h += `<h3>${T.why}</h3><div class="explain">${esc(c.explanation)}</div>`;
+
+  if (c.evidence.length) {
+    h += `<h3>${T.paperSays}</h3>` + c.evidence.map((e, i) => {
+      const ch = e.check || {}, st = ch.status || "unchecked";
+      const color = {exact: "ok", close: "ok", doubtful: "imp", not_found: "fix"}[st] || "pen";
+      const pg = ch.found_page || e.page;
+      return `<div class="ev"><blockquote>${esc(e.quote)}</blockquote><div class="foot">
+        <span class="badge" style="background:var(--panel);color:${cv(color)};border:1px solid currentColor">${esc(T.check[st])}</span>
+        <span>p. ${esc(e.page ?? "?")}</span>${ch.page_warning ? `<span style="color:var(--imp)">${esc(T.pageWarn(ch.page_warning.stated, ch.page_warning.found))}</span>` : ""}
+        <span class="grow"></span>
+        ${pg ? `<button class="lnk" data-page="${esc(pg)}" data-ev="${i}">${T.seeContext}</button>` : ""}
+        ${p.pdf ? `<a class="lnk" target="_blank" href="/pdf/${encodeURIComponent(c.paper_key)}#page=${esc(pg || 1)}">${T.openPdf}</a>` : ""}</div></div>`;
+    }).join("");
+  }
+
+  h += `<h3>${T.yourDecision}</h3><div class="choices">${Object.entries(T.decisions).map(([k, l]) => `<button data-dec="${k}" class="${rv.status === k ? "on" : ""}">${l}</button>`).join("")}
+    <button data-dec="">${T.remove}</button></div>
+    <textarea id="note" placeholder="${esc(T.notePh)}">${esc(rv.note || "")}</textarea>`;
+
+  h += `<h3>${T.withClaude}</h3><div class="choices">
+    <button data-run="review" data-args="${c.id}" ${p.pdf ? "" : "disabled"}>${esc(T.secondOpinion(c.id))}</button>
+    <button data-run="verify" data-args="${esc(c.paper_key)}" ${p.pdf ? "" : "disabled"}>${esc(T.reverify(c.paper_key))}</button></div>`;
+
+  h += `<h3>${T.paper}</h3><dl class="meta"><dt>${T.key}</dt><dd>${esc(c.paper_key)}</dd>
+    ${p.title ? `<dt>${T.title}</dt><dd>${esc(p.title)}</dd>` : ""}${p.authors ? `<dt>${T.authors}</dt><dd>${esc(p.authors)} ${esc(p.year ? "(" + p.year + ")" : "")}</dd>` : ""}
+    ${p.summary ? `<dt>${T.summary}</dt><dd>${esc(p.summary)}</dd>` : ""}${p.date ? `<dt>${T.verifiedOn}</dt><dd>${esc(p.date)}</dd>` : ""}</dl>`;
+
+  el.innerHTML = h;
+  el.scrollTop = 0;
+  const cb = $("#copyBtn");
+  if (cb) cb.onclick = () => { navigator.clipboard.writeText(c.suggestion); cb.textContent = T.copied; setTimeout(() => cb.textContent = T.copy, 1500); };
+  el.querySelectorAll("[data-page]").forEach(b => b.onclick = () => openPage(c.paper_key, +b.dataset.page, c.evidence[+b.dataset.ev].quote));
+  el.querySelectorAll("[data-dec]").forEach(b => b.onclick = () => saveReview(c, b.dataset.dec || null, $("#note").value));
+  $("#note").onblur = e => { if ((rv.note || "") !== e.target.value) saveReview(c, rv.status || null, e.target.value); };
+  el.querySelectorAll("[data-run]").forEach(b => b.onclick = () => run(b.dataset.run, b.dataset.args));
+}
+
+function welcome() {
+  const pdfs = D.papers.filter(p => p.pdf).length;
+  return `<div class="welcome"><h2>${T.welcomeTitle}</h2><ol>${T.welcome(pdfs, esc(D.sources.thesis_main)).map(s => `<li>${s}</li>`).join("")}</ol>
+    ${D.claude ? "" : `<div class="notice bad">${T.noClaude}</div>`}</div>`;
+}
+
+async function saveReview(c, status, note) {
+  const r = await (await fetch("/api/review", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({id: c.id, status, note})})).json();
+  c.review = r.review || null;
+  renderChips(); renderList(); renderDetail();
+}
+
+/* paper page in context */
+const norm = s => s.replace(/(\w)[-­]\s*\n\s*(\w)/g, "$1$2").replace(/[‘’]/g, "'").replace(/[“”]/g, '"').replace(/[ \t]*\n(?!\s*\n)[ \t]*/g, " ").replace(/[ \t]+/g, " ");
+async function openPage(key, page, quote) {
+  modalState = {key, page, quote};
+  const j = await (await fetch(`/api/page?key=${encodeURIComponent(key)}&p=${page}`)).json();
+  modalState.total = j.total;
+  const t = norm(j.text || T.emptyPage), qt = norm(quote || "").trim();
+  let i = qt ? t.toLowerCase().indexOf(qt.toLowerCase()) : -1, len = qt.length;
+  if (i < 0 && qt) { const start = qt.split(" ").slice(0, 6).join(" "); i = t.toLowerCase().indexOf(start.toLowerCase()); len = start.length; }
+  $("#modBody").innerHTML = i >= 0 ? esc(t.slice(0, i)) + `<mark id="hit">${esc(t.slice(i, i + len))}</mark>` + esc(t.slice(i + len)) : esc(t);
+  $("#modTitle").textContent = T.page(key, page, j.total);
+  $("#modPdf").href = `/pdf/${encodeURIComponent(key)}#page=${page}`;
+  $("#modal").classList.add("visible");
+  const hit = $("#hit"); if (hit) hit.scrollIntoView({block: "center"});
+}
+$("#modClose").onclick = () => $("#modal").classList.remove("visible");
+$("#modal").onclick = e => { if (e.target.id === "modal") $("#modal").classList.remove("visible"); };
+$("#modPrev").onclick = () => modalState && modalState.page > 1 && openPage(modalState.key, modalState.page - 1, modalState.quote);
+$("#modNext").onclick = () => modalState && modalState.page < modalState.total && openPage(modalState.key, modalState.page + 1, modalState.quote);
+
+/* Claude Code jobs */
+async function run(action, args = "") {
+  const needsClaude = !["report", "scan"].includes(action);
+  if (needsClaude && !D.claude) { logError(T.noClaude); return; }
+  if (needsClaude && !(A && A.logged_in)) { startLogin(); return; }
+  const j = await (await fetch("/api/run", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({action, args})})).json();
+  if (!j.ok) { logError(T.errors[j.message] || j.message); return; }
+  logSince = 0; $("#logBody").innerHTML = ""; $("#log").classList.add("visible"); follow();
+}
+function logError(msg) { $("#log").classList.add("visible"); $("#logBody").insertAdjacentHTML("beforeend", `<div class="lg error">${msg}</div>`); }
+async function follow() {
+  clearTimeout(logTimer);
+  const j = await (await fetch(`/api/job?since=${logSince}`)).json();
+  logSince = j.total;
+  const body = $("#logBody"), atEnd = body.scrollTop + body.clientHeight >= body.scrollHeight - 20;
+  body.insertAdjacentHTML("beforeend", j.log.map(l => `<div class="lg ${l.sub ? "sub" : ""} ${l.kind}"><span class="h">${l.t}</span>${l.kind === "tool" ? "› " : ""}${esc(l.text)}</div>`).join(""));
+  if (atEnd) body.scrollTop = body.scrollHeight;
+  $("#logTitle").textContent = j.action ? `${T.jobs[j.action] || j.action} ${j.args || ""}${j.active ? T.running : j.ok ? T.finished : T.failed}` : T.noJobs;
+  $("#logSpin").innerHTML = j.active ? `<span class="spin"></span>` : "";
+  $("#logCancel").style.display = j.active ? "" : "none";
+  $("#verifyPending").disabled = j.active;
+  if (j.active) logTimer = setTimeout(follow, 1200); else if (j.finished) load();
+}
+$("#logClose").onclick = () => $("#log").classList.remove("visible");
+$("#logCancel").onclick = () => fetch("/api/cancel", {method: "POST"});
+$("#showLog").onclick = () => { logSince = 0; $("#logBody").innerHTML = ""; $("#log").classList.add("visible"); follow(); $("#menu").classList.remove("open"); };
+
+/* controls */
+$("#reload").onclick = async () => {  // re-read both folders (no AI), then reload the data
+  const btn = $("#reload"); btn.disabled = true;
+  const r = await (await fetch("/api/run", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({action: "scan", args: ""})})).json();
+  if (r.ok) { let j; do { await new Promise(res => setTimeout(res, 500)); j = await (await fetch("/api/job?since=100000")).json(); } while (j.active); }
+  btn.disabled = false; await load();
+};
+$("#verifyPending").onclick = () => run("verify", "pending");
+$("#menuBtn").onclick = e => { e.stopPropagation(); $("#menu").classList.toggle("open"); };
+document.addEventListener("click", () => $("#menu").classList.remove("open"));
+document.querySelectorAll("#menu [data-act]").forEach(b => b.onclick = () => run(b.dataset.act, b.dataset.args || ""));
+document.querySelectorAll(".lang button").forEach(b => b.onclick = () => setLang(b.dataset.lang));
+document.querySelectorAll(".tabs button").forEach(b => b.onclick = () => {
+  view = b.dataset.view; treeFilter = null; document.querySelectorAll(".tabs button").forEach(x => x.classList.toggle("on", x === b)); render();
+});
+$("#search").oninput = e => { q = e.target.value; renderList(); };
+document.addEventListener("keydown", e => {
+  if (e.target.matches("input,textarea")) { if (e.key === "Escape") e.target.blur(); return; }
+  if (e.key === "Escape") { $("#modal").classList.remove("visible"); $("#picker").classList.remove("visible"); }
+  if (e.key === "/") { e.preventDefault(); $("#search").focus(); }
+  if (e.key === "r") load();
+  if (["j", "k", "ArrowDown", "ArrowUp"].includes(e.key)) {
+    const l = filtered(), i = l.findIndex(c => c.id === sel), d = (e.key === "j" || e.key === "ArrowDown") ? 1 : -1;
+    if (l[i + d]) { e.preventDefault(); sel = l[i + d].id; renderList(); renderDetail(); document.querySelector(".card.on")?.scrollIntoView({block: "nearest"}); }
+  }
+});
+
+(async () => {
+  setLang(storedLang() || "en", false);
+  renderAccount();
+  await load(false);
+  if (!storedLang()) setLang(D.config.language, false);
+  loadAccount();
+  const j = await (await fetch("/api/job")).json();
+  if (j.active) { $("#log").classList.add("visible"); follow(); }
+})();
+</script>
+</body>
+</html>

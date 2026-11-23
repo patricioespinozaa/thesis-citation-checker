@@ -1,0 +1,26 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(py *)",
+      "Read",
+      "Grep",
+      "Glob",
+      "Task",
+      "Agent",
+      "Write(claims/**)",
+      "Write(results/**)",
+      "Edit(claims/**)",
+      "Edit(results/**)"
+    ],
+    "deny": [
+      "Write(thesis/**)",
+      "Edit(thesis/**)",
+      "Write(papers/**)",
+      "Edit(papers/**)",
+      "Write(extracted/**)",
+      "Edit(extracted/**)"
+    ]
+  }
+}

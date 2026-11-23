@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+.venv/
+
+# Your own material: never commit papers, thesis text or results to a public repository
+papers/*
+!papers/README.txt
+thesis/*
+!thesis/README.txt
+extracted/
+results/*
+!results/.gitkeep
+reports/*
+!reports/.gitkeep
+claims/*
+!claims/claims.csv
+
+# Local settings (your folder paths live in config.json: keep it out of a public fork if you prefer)
+.claude/settings.local.json
+.DS_Store
+~$*

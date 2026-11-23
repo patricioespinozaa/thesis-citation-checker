@@ -1,0 +1,4 @@
+# Optional: better text extraction and approximate quote matching.
+# Without them the scripts fall back to pure-Python alternatives.
+pymupdf>=1.24
+rapidfuzz>=3.0
